@@ -1,3 +1,4 @@
 aiogram
 captcha
 Pillow
+python-dotenv
