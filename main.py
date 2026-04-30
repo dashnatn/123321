@@ -527,7 +527,7 @@ async def choose_city(callback: types.CallbackQuery, state: FSMContext):
 
     districts = config.CITIES.get(city_name, [])
     if not districts:
-        await callback.message.edit_text("❌ В этом городе пока нет доступных районов.", reply_markup=None)
+        await callback.message.edit_caption(caption="❌ В этом городе пока нет доступных районов.", reply_markup=None)
         await state.set_state(ShopStates.main_menu)
         return
 
@@ -536,24 +536,21 @@ async def choose_city(callback: types.CallbackQuery, state: FSMContext):
         [{"text": "◁ К выбору города", "callback_data": "back_to_city", "icon_custom_emoji_id": "5893057118545646106"}]
     ]}
 
-    data = await state.get_data()
-    if data.get("prev_bot_msg"):
-        try: await bot.delete_message(callback.message.chat.id, data["prev_bot_msg"])
-        except: pass
-
-    await callback.message.edit_text(f'<tg-emoji emoji-id="5873147866364514353">🏙</tg-emoji> Город: <b>{city_name}</b>\n\n<tg-emoji emoji-id="6042011682497106307">🗺</tg-emoji> <b>ВЫБЕРИТЕ РАЙОН:</b>', reply_markup=kb, parse_mode="HTML")
-    await state.update_data(last_bot_msg=callback.message.message_id)
+    await callback.message.edit_caption(caption=f'<tg-emoji emoji-id="5873147866364514353">🏙</tg-emoji> Город: <b>{city_name}</b>\n\n<tg-emoji emoji-id="6042011682497106307">🗺</tg-emoji> <b>ВЫБЕРИТЕ РАЙОН:</b>', reply_markup=kb, parse_mode="HTML")
     await callback.answer()
 
 @dp.callback_query(ShopStates.choosing_district, F.data == "back_to_city")
 async def back_to_city(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(ShopStates.choosing_city)
-    kb = {"inline_keyboard": [[{
-        "text": city,
-        "callback_data": f"city_{city}",
-        "icon_custom_emoji_id": "5873147866364514353"
-    } for city in list(config.CITIES.keys())[i:i+2]] for i in range(0, len(config.CITIES), 2)]}
-    await callback.message.edit_text('<tg-emoji emoji-id="6042011682497106307">📍</tg-emoji> <b>ВЫБЕРИТЕ ГОРОД:</b>', reply_markup=kb, parse_mode="HTML")
+    kb = {"inline_keyboard": [
+        *[[{
+            "text": city,
+            "callback_data": f"city_{city}",
+            "icon_custom_emoji_id": "5873147866364514353"
+        } for city in list(config.CITIES.keys())[i:i+2]] for i in range(0, len(config.CITIES), 2)],
+        [{"text": "◁ Назад в меню", "callback_data": "back_to_menu", "icon_custom_emoji_id": "5893057118545646106"}]
+    ]}
+    await callback.message.edit_caption(caption='<tg-emoji emoji-id="6042011682497106307">📍</tg-emoji> <b>ВЫБЕРИТЕ ГОРОД:</b>', reply_markup=kb, parse_mode="HTML")
     await callback.answer()
 
 @dp.callback_query(ShopStates.choosing_district, F.data.startswith("dist_"))
@@ -572,12 +569,11 @@ async def choose_district(callback: types.CallbackQuery, state: FSMContext):
         [{"text": "◁ К выбору района", "callback_data": "back_to_district", "icon_custom_emoji_id": "5893057118545646106"}]
     ]}
 
-    await callback.message.edit_text(
-        f'<tg-emoji emoji-id="5873147866364514353">🏙</tg-emoji> {data.get("city")} ➡ <tg-emoji emoji-id="6042011682497106307">🗺</tg-emoji> {district_name}\n\n<tg-emoji emoji-id="5884479287171485878">📦</tg-emoji> <b>ВЫБЕРИТЕ ТОВАР:</b>', 
+    await callback.message.edit_caption(
+        caption=f'<tg-emoji emoji-id="5873147866364514353">🏙</tg-emoji> {data.get("city")} ➡ <tg-emoji emoji-id="6042011682497106307">🗺</tg-emoji> {district_name}\n\n<tg-emoji emoji-id="5884479287171485878">📦</tg-emoji> <b>ВЫБЕРИТЕ ТОВАР:</b>', 
         reply_markup=kb, 
         parse_mode="HTML"
     )
-    await state.update_data(last_bot_msg=callback.message.message_id)
     await callback.answer()
 @dp.callback_query(ShopStates.choosing_product, F.data == "back_to_district")
 async def back_to_district(callback: types.CallbackQuery, state: FSMContext):
@@ -590,7 +586,7 @@ async def back_to_district(callback: types.CallbackQuery, state: FSMContext):
         *[[{"text": dist, "callback_data": f"dist_{dist}", "icon_custom_emoji_id": "6042011682497106307"} for dist in districts[i:i+2]] for i in range(0, len(districts), 2)],
         [{"text": "◁ К выбору города", "callback_data": "back_to_city", "icon_custom_emoji_id": "5893057118545646106"}]
     ]}
-    await callback.message.edit_text(f'<tg-emoji emoji-id="5873147866364514353">🏙</tg-emoji> Город: <b>{city_name}</b>\n\n<tg-emoji emoji-id="6042011682497106307">🗺</tg-emoji> <b>ВЫБЕРИТЕ РАЙОН:</b>', reply_markup=kb, parse_mode="HTML")
+    await callback.message.edit_caption(caption=f'<tg-emoji emoji-id="5873147866364514353">🏙</tg-emoji> Город: <b>{city_name}</b>\n\n<tg-emoji emoji-id="6042011682497106307">🗺</tg-emoji> <b>ВЫБЕРИТЕ РАЙОН:</b>', reply_markup=kb, parse_mode="HTML")
     await callback.answer()
 
 @dp.callback_query(ShopStates.choosing_product, F.data.startswith("prod_"))
@@ -617,11 +613,10 @@ async def product_selected(callback: types.CallbackQuery, state: FSMContext):
         [{"text": "◁ К выбору товара", "callback_data": "back_to_product", "icon_custom_emoji_id": "5893057118545646106"}]
     ]}
 
-    await callback.message.edit_text(
-        f'<tg-emoji emoji-id="5884479287171485878">📦</tg-emoji> Товар: <b>{product_full_name}</b>\n<tg-emoji emoji-id="5904462880941545555">💰</tg-emoji> Цена: <b>{price}</b>\n\n<tg-emoji emoji-id="5870982283724328568">🛠</tg-emoji> <b>ВЫБЕРИТЕ ТИП КЛАДА:</b>',
+    await callback.message.edit_caption(
+        caption=f'<tg-emoji emoji-id="5884479287171485878">📦</tg-emoji> Товар: <b>{product_full_name}</b>\n<tg-emoji emoji-id="5904462880941545555">💰</tg-emoji> Цена: <b>{price}</b>\n\n<tg-emoji emoji-id="5870982283724328568">🛠</tg-emoji> <b>ВЫБЕРИТЕ ТИП КЛАДА:</b>',
         reply_markup=kb, parse_mode="HTML"
     )
-    await state.update_data(last_bot_msg=callback.message.message_id)
     await callback.answer()
 
 @dp.callback_query(ShopStates.choosing_klad_type, F.data == "back_to_product")
@@ -633,7 +628,7 @@ async def back_to_product(callback: types.CallbackQuery, state: FSMContext):
         *[[{"text": p_text, "callback_data": f"prod_{idx}", "icon_custom_emoji_id": "5884479287171485878"}] for idx, p_text in enumerate(data.get("shuffled_products", []))],
         [{"text": "◁ К выбору района", "callback_data": "back_to_district", "icon_custom_emoji_id": "5893057118545646106"}]
     ]}
-    await callback.message.edit_text(f'<tg-emoji emoji-id="5873147866364514353">🏙</tg-emoji> {data.get("city")} ➡ <tg-emoji emoji-id="6042011682497106307">🗺</tg-emoji> {data.get("district")}\n\n<tg-emoji emoji-id="5884479287171485878">📦</tg-emoji> <b>ВЫБЕРИТЕ ТОВАР:</b>', reply_markup=kb, parse_mode="HTML")
+    await callback.message.edit_caption(caption=f'<tg-emoji emoji-id="5873147866364514353">🏙</tg-emoji> {data.get("city")} ➡ <tg-emoji emoji-id="6042011682497106307">🗺</tg-emoji> {data.get("district")}\n\n<tg-emoji emoji-id="5884479287171485878">📦</tg-emoji> <b>ВЫБЕРИТЕ ТОВАР:</b>', reply_markup=kb, parse_mode="HTML")
     await callback.answer()
 
 @dp.callback_query(ShopStates.choosing_klad_type, F.data.startswith("type_"))
@@ -660,8 +655,7 @@ async def klad_type_selected(callback: types.CallbackQuery, state: FSMContext):
         [{"text": "◁ К типу клада", "callback_data": "back_to_klad_type", "icon_custom_emoji_id": "5893057118545646106"}]
     ]}
 
-    await callback.message.edit_text(summary, reply_markup=kb, parse_mode="HTML")
-    await state.update_data(last_bot_msg=callback.message.message_id)
+    await callback.message.edit_caption(caption=summary, reply_markup=kb, parse_mode="HTML")
     await callback.answer()
 @dp.callback_query(ShopStates.confirm_order, F.data == "back_to_klad_type")
 async def back_to_klad_type(callback: types.CallbackQuery, state: FSMContext):
@@ -674,13 +668,13 @@ async def back_to_klad_type(callback: types.CallbackQuery, state: FSMContext):
         ],
         [{"text": "◁ К выбору товара", "callback_data": "back_to_product", "icon_custom_emoji_id": "5893057118545646106"}]
     ]}
-    await callback.message.edit_text(f'<tg-emoji emoji-id="5884479287171485878">📦</tg-emoji> Товар: <b>{data.get("product")}</b>\n<tg-emoji emoji-id="5904462880941545555">💰</tg-emoji> Цена: <b>{data.get("price")}</b>\n\n<tg-emoji emoji-id="5870982283724328568">🛠</tg-emoji> <b>ВЫБЕРИТЕ ТИП КЛАДА:</b>', reply_markup=kb, parse_mode="HTML")
+    await callback.message.edit_caption(caption=f'<tg-emoji emoji-id="5884479287171485878">📦</tg-emoji> Товар: <b>{data.get("product")}</b>\n<tg-emoji emoji-id="5904462880941545555">💰</tg-emoji> Цена: <b>{data.get("price")}</b>\n\n<tg-emoji emoji-id="5870982283724328568">🛠</tg-emoji> <b>ВЫБЕРИТЕ ТИП КЛАДА:</b>', reply_markup=kb, parse_mode="HTML")
     await callback.answer()
 
 @dp.callback_query(ShopStates.confirm_order, F.data == "order_confirm_cancel")
 async def cancel_order(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(ShopStates.main_menu)
-    await callback.message.edit_text("❌ <b>Заказ отменён.</b>", parse_mode="HTML")
+    await callback.message.edit_caption(caption="❌ <b>Заказ отменён.</b>", parse_mode="HTML", reply_markup=None)
     await callback.answer()
 
 @dp.callback_query(ShopStates.confirm_order, F.data == "order_confirm_yes")
@@ -701,8 +695,7 @@ async def select_payment_method(callback: types.CallbackQuery, state: FSMContext
         [{"text": "Отменить", "callback_data": "order_confirm_cancel", "style": "danger", "icon_custom_emoji_id": "5870657884844462243"}]
     ]}
 
-    await callback.message.edit_text('<tg-emoji emoji-id="5769126056262898415">💳</tg-emoji> <b>ВЫБЕРИТЕ СПОСОБ ОПЛАТЫ:</b>', reply_markup=kb, parse_mode="HTML")
-    await state.update_data(last_bot_msg=callback.message.message_id)
+    await callback.message.edit_caption(caption='<tg-emoji emoji-id="5769126056262898415">💳</tg-emoji> <b>ВЫБЕРИТЕ СПОСОБ ОПЛАТЫ:</b>', reply_markup=kb, parse_mode="HTML")
     await callback.answer()
 
 @dp.callback_query(ShopStates.payment_method, F.data.in_({"pay_card", "pay_crypto"}))
@@ -727,8 +720,7 @@ async def show_requisites(callback: types.CallbackQuery, state: FSMContext):
         [{"text": "Отмена", "callback_data": "order_confirm_cancel", "style": "danger", "icon_custom_emoji_id": "5870657884844462243"}]
     ]}
 
-    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    await state.update_data(last_bot_msg=callback.message.message_id)
+    await callback.message.edit_caption(caption=text, reply_markup=kb, parse_mode="HTML")
     await callback.answer()
 @dp.callback_query(ShopStates.payment_method, F.data == "i_paid")
 async def process_payment_claim(callback: types.CallbackQuery, state: FSMContext):
@@ -775,12 +767,8 @@ async def process_payment_claim(callback: types.CallbackQuery, state: FSMContext
 
     await state.set_state(ShopStates.main_menu)
     
-    if data.get("prev_bot_msg"):
-        try: await bot.delete_message(callback.message.chat.id, data["prev_bot_msg"])
-        except: pass
-    
-    await callback.message.edit_text(
-        f'<tg-emoji emoji-id="5870633910337015697">✅</tg-emoji> <b>Заявка №{order_id} принята!</b>\n\n'
+    await callback.message.edit_caption(
+        caption=f'<tg-emoji emoji-id="5870633910337015697">✅</tg-emoji> <b>Заявка №{order_id} принята!</b>\n\n'
         '<tg-emoji emoji-id="5983150113483134607">⏳</tg-emoji> Ожидайте подтверждения оплаты от оператора (обычно 5-10 минут).\n'
         f'<tg-emoji emoji-id="6039486778597970865">📞</tg-emoji> Поддержка: {config.SUPPORT_URL}',
         parse_mode="HTML",
