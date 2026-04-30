@@ -293,41 +293,33 @@ async def send_captcha(chat_id: int, state: FSMContext):
 
 async def send_welcome_message(chat_id: int):
     welcome_text = (
-        '<tg-emoji emoji-id="5870982283724328568">🪅</tg-emoji><tg-emoji emoji-id="5870994129244131212">🧬</tg-emoji> <b>DANZELL SHOP</b> <tg-emoji emoji-id="5870772616305839506">⚗️</tg-emoji><tg-emoji emoji-id="5891207662678317861">🛍️</tg-emoji>\n\n'
-        '<tg-emoji emoji-id="5870528606328852614">🧙‍♀️</tg-emoji> <b>ЧИСТЫЙ КАЙФ</b>\n'
-        '<tg-emoji emoji-id="5870764288364252592">🧌</tg-emoji> <b>ХОРОШИЕ ТОЧКИ</b>\n'
-        '<tg-emoji emoji-id="5870930636742595124">🧞‍♀️</tg-emoji> <b>БЫСТРАЯ ДОСТАВКА</b>\n\n'
-        '<tg-emoji emoji-id="5870921681735781843">🏎</tg-emoji> <b>Доставка обговаривается лично</b> <tg-emoji emoji-id="5873147866364514353">💬</tg-emoji>\n'
-        '      <tg-emoji emoji-id="6037249452824072506">⏱</tg-emoji> <b>СРОКИ ВЫПОЛНЕНИЯ:</b>\n'
-        '        НЕ БОЛЕЕ 2-3 ЧАСОВ.\n\n'
-        f'    <tg-emoji emoji-id="6037496202990194718">👉</tg-emoji> <b>{config.SUPPORT_URL}</b> <tg-emoji emoji-id="6039422865189638057">👈</tg-emoji>\n\n'
-        '<tg-emoji emoji-id="5870633910337015697">🧚</tg-emoji> <b>DANZELL SHOP</b> <tg-emoji emoji-id="5870657884844462243">🍀</tg-emoji>\n'
-        '<i>Ты знаешь, к кому обратиться!</i> <tg-emoji emoji-id="5870676941614354370">🌪️</tg-emoji><tg-emoji emoji-id="5870875489362513438">🧊</tg-emoji>'
+        '💎 <b>DANZELL SHOP</b> ✨\n\n'
+        '<blockquote>'
+        '✨ <b>ЧИСТЫЙ КАЙФ</b>\n'
+        '📍 <b>ХОРОШИЕ ТОЧКИ</b>\n'
+        '⚡️ <b>БЫСТРАЯ ДОСТАВКА</b>\n\n'
+        '🚗 <b>Доставка обговаривается лично</b>\n'
+        '⏱ <b>СРОКИ ВЫПОЛНЕНИЯ:</b> НЕ БОЛЕЕ 2-3 ЧАСОВ\n\n'
+        f'👉 <b>Поддержка:</b> {config.SUPPORT_URL}'
+        '</blockquote>\n\n'
+        '🌟 <b>DANZELL SHOP</b>\n'
+        '<i>Ты знаешь, к кому обратиться!</i>'
     )
+    kb = {
+        "inline_keyboard": [
+            [{"text": "🚀 ДОСТАВКА (ДО ДВЕРИ)", "callback_data": "menu_delivery", "style": "primary", "icon_custom_emoji_id": "5963103826075456248"}],
+            [{"text": "🏙 ЗАКАЗАТЬ (ГОРОДА)", "callback_data": "menu_order", "style": "success", "icon_custom_emoji_id": "5890937706803894250"}],
+            [{"text": "💎 ОТЗЫВЫ / ГАРАНТИИ", "callback_data": "menu_reviews", "icon_custom_emoji_id": "5870633910337015697"}]
+        ]
+    }
     await bot.send_photo(
         chat_id=chat_id,
         photo=BANNER_URL,
         caption=welcome_text,
-        reply_markup=get_main_menu_kb(),
+        reply_markup=kb,
         parse_mode="HTML",
     )
 
-# --- КЛАВИАТУРЫ ---
-def get_main_menu_kb():
-    return {
-        "keyboard": [
-            [{"text": "🚀 ДОСТАВКА (ДО ДВЕРИ)", "icon_custom_emoji_id": "5963103826075456248"}],
-            [{"text": "🏙 ЗАКАЗАТЬ (ГОРОДА)", "icon_custom_emoji_id": "5890937706803894250"}],
-            [{"text": "💎 ОТЗЫВЫ / ГАРАНТИИ", "icon_custom_emoji_id": "5870633910337015697"}]
-        ],
-        "resize_keyboard": True
-    }
-
-def get_back_kb():
-    return {
-        "keyboard": [[{"text": "◁ Назад", "icon_custom_emoji_id": "5893057118545646106"}]],
-        "resize_keyboard": True
-    }
 # --- АДМИН ПАНЕЛЬ ---
 @dp.message(Command("m", "maintenance"))
 async def cmd_maintenance(message: types.Message):
@@ -473,63 +465,59 @@ async def process_captcha_input(message: types.Message, state: FSMContext):
         await send_captcha(message.chat.id, state)
 
 # --- ГЛАВНОЕ МЕНЮ ---
-@dp.message(F.text == "◁ Назад", F.chat.type == "private")
-async def go_back(message: types.Message, state: FSMContext):
-    if await check_access(message.from_user, message): return
-    await safe_delete_message(message)
+@dp.callback_query(F.data == "back_to_menu")
+async def go_back(callback: types.CallbackQuery, state: FSMContext):
+    if await check_access(callback.from_user): return
     await state.set_state(ShopStates.main_menu)
-    msg = await bot.send_message(message.chat.id, '<tg-emoji emoji-id="5893057118545646106">◁</tg-emoji> <b>Главное меню:</b>', reply_markup=get_main_menu_kb(), parse_mode="HTML")
-    await state.update_data(last_bot_msg=msg.message_id)
+    await callback.message.delete()
+    await send_welcome_message(callback.message.chat.id)
+    await callback.answer()
 
-@dp.message(ShopStates.main_menu, F.text.contains("ДОСТАВКА"), F.chat.type == "private")
-async def menu_delivery(message: types.Message, state: FSMContext):
-    if await check_access(message.from_user, message): return
-    await safe_delete_message(message)
-    data = await state.get_data()
-    if data.get("last_bot_msg"):
-        try: await bot.delete_message(message.chat.id, data["last_bot_msg"])
-        except: pass
+
+@dp.callback_query(F.data == "menu_delivery")
+async def menu_delivery(callback: types.CallbackQuery, state: FSMContext):
+    if await check_access(callback.from_user): return
     text = f'<tg-emoji emoji-id="6039422865189638057">🆘</tg-emoji> <b>ЗАКАЗАТЬ ДОСТАВКУ (ДО ДВЕРИ):</b>\n\n<tg-emoji emoji-id="5870994129244131212">👤</tg-emoji> Связь с оператором: {config.SUPPORT_URL}\n\n<i><tg-emoji emoji-id="5904462880941545555">💸</tg-emoji> Полная анонимность. Любой каприз за ваши деньги.</i>'
-    msg = await bot.send_message(message.chat.id, text, parse_mode="HTML", reply_markup=get_back_kb())
-    await state.update_data(last_bot_msg=msg.message_id)
+    kb = {
+        "inline_keyboard": [
+            [{"text": "◁ Назад в меню", "callback_data": "back_to_menu", "icon_custom_emoji_id": "5893057118545646106"}]
+        ]
+    }
+    await callback.message.edit_caption(caption=text, reply_markup=kb, parse_mode="HTML")
+    await callback.answer()
 
-@dp.message(ShopStates.main_menu, F.text.contains("ОТЗЫВЫ"), F.chat.type == "private")
-async def menu_reviews(message: types.Message, state: FSMContext):
-    if await check_access(message.from_user, message): return
-    await safe_delete_message(message)
-    data = await state.get_data()
-    if data.get("last_bot_msg"):
-        try: await bot.delete_message(message.chat.id, data["last_bot_msg"])
-        except: pass
+
+@dp.callback_query(F.data == "menu_reviews")
+async def menu_reviews(callback: types.CallbackQuery, state: FSMContext):
+    if await check_access(callback.from_user): return
     text = f'<tg-emoji emoji-id="5870633910337015697">💎</tg-emoji> <b><a href="{config.REVIEWS_URL}">ЧИТАТЬ ОТЗЫВЫ КЛИЕНТОВ</a></b>\n\n<tg-emoji emoji-id="6028435952299413210">❗️</tg-emoji> <i>ОТКРЫВАТЬ ТОЛЬКО ЧЕРЕЗ ONION БРАУЗЕР!</i>'
-    msg = await bot.send_message(message.chat.id, text, parse_mode="HTML", disable_web_page_preview=True)
-    await state.update_data(last_bot_msg=msg.message_id)
+    kb = {
+        "inline_keyboard": [
+            [{"text": "◁ Назад в меню", "callback_data": "back_to_menu", "icon_custom_emoji_id": "5893057118545646106"}]
+        ]
+    }
+    await callback.message.edit_caption(caption=text, reply_markup=kb, parse_mode="HTML", disable_web_page_preview=True)
+    await callback.answer()
+
 # --- ОФОРМЛЕНИЕ ЗАКАЗА ---
-@dp.message(ShopStates.main_menu, F.text.contains("ЗАКАЗАТЬ"), F.chat.type == "private")
-async def start_order(message: types.Message, state: FSMContext):
-    if await check_access(message.from_user, message): return
-    await safe_delete_message(message)
-    data = await state.get_data()
-    if data.get("last_bot_msg"):
-        try: await bot.delete_message(message.chat.id, data["last_bot_msg"])
-        except: pass
+@dp.callback_query(F.data == "menu_order")
+async def start_order(callback: types.CallbackQuery, state: FSMContext):
+    if await check_access(callback.from_user): return
     await state.set_state(ShopStates.choosing_city)
-    
-    msg1 = await bot.send_message(message.chat.id, '<tg-emoji emoji-id="5884479287171485878">🛒</tg-emoji> <b>Режим оформления заказа</b>', reply_markup=get_back_kb(), parse_mode="HTML")
 
-    kb = {"inline_keyboard": [[{
-        "text": city,
-        "callback_data": f"city_{city}",
-        "icon_custom_emoji_id": "5873147866364514353"
-    } for city in list(config.CITIES.keys())[i:i+2]] for i in range(0, len(config.CITIES), 2)]}
+    kb = {"inline_keyboard": [
+        *[[{
+            "text": city,
+            "callback_data": f"city_{city}",
+            "icon_custom_emoji_id": "5873147866364514353"
+        } for city in list(config.CITIES.keys())[i:i+2]] for i in range(0, len(config.CITIES), 2)],
+        [{"text": "◁ Назад в меню", "callback_data": "back_to_menu", "icon_custom_emoji_id": "5893057118545646106"}]
+    ]}
 
-    msg2 = await bot.send_message(
-        message.chat.id,
-        '<tg-emoji emoji-id="6042011682497106307">📍</tg-emoji> <b>ВЫБЕРИТЕ ГОРОД:</b>\n\n<i>Мы работаем по всем районам.</i>', 
-        reply_markup=kb, 
-        parse_mode="HTML"
-    )
-    await state.update_data(last_bot_msg=msg2.message_id, prev_bot_msg=msg1.message_id)
+    text = '<tg-emoji emoji-id="5884479287171485878">🛒</tg-emoji> <b>Режим оформления заказа</b>\n\n<tg-emoji emoji-id="6042011682497106307">📍</tg-emoji> <b>ВЫБЕРИТЕ ГОРОД:</b>\n\n<i>Мы работаем по всем районам.</i>'
+    await callback.message.edit_caption(caption=text, reply_markup=kb, parse_mode="HTML")
+    await callback.answer()
+
 
 @dp.callback_query(ShopStates.choosing_city, F.data.startswith("city_"))
 async def choose_city(callback: types.CallbackQuery, state: FSMContext):
@@ -841,15 +829,8 @@ async def admin_decision(callback: types.CallbackQuery):
 @dp.message(F.chat.type == "private")
 async def fallback_handler(message: types.Message, state: FSMContext):
     if await check_access(message.from_user, message): return
-    current_state = await state.get_state()
-    if current_state == ShopStates.main_menu.state and not message.text.startswith('/'):
-        await safe_delete_message(message)
-        data = await state.get_data()
-        if data.get("last_bot_msg"):
-            try: await bot.delete_message(message.chat.id, data["last_bot_msg"])
-            except: pass
-        msg = await bot.send_message(message.chat.id, "Воспользуйтесь меню ниже 👇", reply_markup=get_main_menu_kb())
-        await state.update_data(last_bot_msg=msg.message_id)
+    await safe_delete_message(message)
+
 
 async def main():
     await bot.delete_webhook(drop_pending_updates=True)
